@@ -1,12 +1,10 @@
-# Make Rust Closures Types Namable
+# Make Rust Closur Types Namable
 
 This crate provides some types and macros that can create closures which type is namable.
 
 To use, as usual,
 
 ```rust
-#[macro_use] extern crate namable_closures;
-
 #[macro_use] extern crate namable_closures;
 use namable_closures::Closure;
 fn main() {
