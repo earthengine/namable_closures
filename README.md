@@ -1,4 +1,4 @@
-# Make Rust Closur Types Namable
+# Make Rust Closure Types Namable
 
 This crate provides some types and macros that can create closures which type is namable.
 
