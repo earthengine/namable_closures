@@ -1,0 +1,6 @@
+[package]
+name = "namable_closures"
+version = "0.1.0"
+authors = ["Joe Ren <earthengine@gmail.com>"]
+
+[dependencies]
