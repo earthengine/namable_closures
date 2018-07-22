@@ -4,7 +4,7 @@ description = "Provides types and macros to create namable closure types"
 repository = "https://github.com/earthengine/namable_closures.git"
 readme = "README.md"
 license = "MIT"
-version = "0.2.0"
+version = "0.2.1"
 authors = ["Joe Ren <earthengine@gmail.com>"]
 documentation = "https://docs.rs/namable_closures"
 

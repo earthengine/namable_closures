@@ -8,8 +8,8 @@ To use, as usual,
 #[macro_use] extern crate namable_closures;
 use namable_closures::Closure;
 fn main() {
-    let add_ten:Closure<i32,(i32,),i32> = closure!(state, i,  i+*state, 10);
-    println!("{}",add_ten(1)); //11
+    let add_ten:Closure<i32,(i32,),i32> = closure!(state=10 => move |i| i+*state);
+    println!("{}",add_ten.stable_call_once(1)); //11
 }
 ```
 
@@ -21,14 +21,36 @@ the return type of the closure.
 In additional to letting you name the closure type, the function body cannot capture
 any variable by default, so all captures must be explicit.
 
-|                Macro Grammar                              | Struct       |
-|-----------------------------------------------------------|--------------|
-|`closure!(state=ref_exp => |x,y| body(x,y,state))`         | Closure      |
-|`closure!(state=exp => move |x,y| body(x,y,state))`        | ClosureOnce  |
-|`closure!(mut state=ref_exp => |x,y| body(x,y,state))`     | ClosureMut   |
-|`closure!(mut state=exp => move |x,y| body(x,y,state))`    | ClosureOnce  |
-|`closure!(ref state=exp => move |x,y| body(x,y,state))`    | ClosureRef   |
-|`closure!(ref mut state=exp => move |x,y| body(x,y,state))`| ClosureRefMut|
+<table>
+<tr>
+<th>Macro Grammar</th>
+<th>Struct</th>
+</tr>
+<tr>
+<td><code>closure!(state=exp => |x,y| body(x,y,state))</code></td>
+<td><code>Closure</code></td>
+</tr>
+<tr>
+<td><code>closure!(state=exp => move |x,y| body(x,y,state))</code></td>
+<td><code>ClosureOnce</code></td>
+</tr>
+<tr>
+<td><code>closure!(mut state=exp => |x,y| body(x,y,state))</code></td>
+<td><code>ClosureMut</code></td>
+</tr>
+<tr>
+<td><code>closure!(mut state=exp => move |x,y| body(x,y,state))</code></td>
+<td><code>ClosureOnce</code> (with mutable <code>state</code>)</td>
+</tr>
+<tr>
+<td><code>closure!(ref state=exp => move |x,y| body(x,y,state))</code></td>
+<td><code>ClosureRef</code></td>
+</tr>
+<tr>
+<td><code>closure!(ref mut state=exp => move |x,y| body(x,y,state))</code></td>
+<td><code>ClosureRefMut</code></td>
+</tr>
+</table>
 
 # DO NOT USE `Closure` or `ClosureMut` unless you know what you are doing
 

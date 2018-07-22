@@ -459,8 +459,6 @@ where
     }
 }
 
-
-
 #[cfg(feature="nightly")]
 impl<'a, State, Input, Output> FnOnce<Input> for Closure<'a, State, Input, Output> {
     type Output = Output;
