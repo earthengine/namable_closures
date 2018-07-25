@@ -11,6 +11,8 @@ pub trait StableFnMut<Input>: StableFnOnce<Input> {
 pub trait StableFn<Input>:StableFnMut<Input> {
     fn stable_call(&self,args:Input) -> Self::Output;
 }
+
+
 pub fn as_cloning_stable_fn<Input,Output>(f: impl StableFnOnce<Input,Output=Output> + Clone)
     -> impl StableFn<Input,Output=Output>
 {

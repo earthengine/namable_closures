@@ -268,16 +268,6 @@ let read_data:ClosureOnce<MyStream,(&mut [u8],usize),Result<(),io::Error>>
 ```
 ")]
 
-pub mod closures;
-pub mod stable_fn;
-
-pub use closures::Closure;
-pub use closures::ClosureMut;
-pub use closures::ClosureOnce;
-pub use closures::ClosureRef;
-pub use closures::ClosureRefMut;
-pub use stable_fn::{StableFn,StableFnMut,StableFnOnce};
-
 #[doc="
 The macro to create closures.
 
@@ -495,99 +485,58 @@ macro_rules! closure {
     };
 }
 
-#[cfg(test)]
-mod tests {
-    use {Closure, ClosureMut, ClosureOnce, ClosureRef, ClosureRefMut};
-    use {StableFn,StableFnMut,StableFnOnce};
-
-    #[cfg(feature="nightly")]
-    #[test]
-    fn test_closure_copy_clone_nightly() {
-        let c:ClosureRef<i32,(i32,),i32>
-             = closure!(ref a=10 => move |b| *a + b);
-        let copied = c;
-        let cloned = c.clone();
-        assert_eq!(c(20), 30);
-        assert_eq!(copied(20), c(20));
-        assert_eq!(cloned(20), c(20));
-
-        let mut state = 0;
-        {
-            let mut match_cnt:ClosureMut<i32,(i32,i32),()>
-                = closure!(mut state=&mut state => |a,b| if a==b { *state+=1 });
-            for i in 0..10 { match_cnt(i,i*3%10); }
-        }
-        assert_eq!(state,2);
-
-        let mut accumulate:ClosureRefMut<i32,(i32,),i32>
-            = closure!(ref mut state=0 => move |c| {*state+=c;*state});
-        assert_eq!(accumulate(1),1);
-        assert_eq!(accumulate(2),3);
-    }
-
-    #[test]
-    fn test_closure_ref_copy_clone() {
-        let mut c:ClosureRef<i32,(i32,),i32>
-             = closure!(ref a=10 => move |b| *a + b);
-        let mut copied = c;
-        let cloned = c.clone();
-        assert_eq!(c.stable_call((20,)), 30);
-        assert_eq!(copied.stable_call_mut((20,)), c.stable_call_mut((20,)));
-        assert_eq!(cloned.stable_call_once((20,)), c.stable_call_once((20,)));
-    }
-    #[test]
-    fn test_closure_copy_clone() {
-        let mut v = 10;
-        {
-            let mut c:Closure<i32,(i32,),i32>
-                 = closure!(a=&v => |b| *a + b);
-            let mut copied = c;
-            let cloned = c.clone();
-            assert_eq!(c.stable_call((20,)), 30);
-            assert_eq!(copied.stable_call_mut((20,)), c.stable_call_mut((20,)));
-            assert_eq!(cloned.stable_call_once((20,)), c.stable_call_once((20,)));
-        }
-        v = 20;
-        let mut c:Closure<i32,(i32,),i32>
-             = closure!(a=&v => |b| *a + b);
-        let mut copied = c;
-        let cloned = c.clone();
-        assert_eq!(c.stable_call((20,)), 40);
-        assert_eq!(copied.stable_call_mut((20,)), c.stable_call_mut((20,)));
-        assert_eq!(cloned.stable_call_once((20,)), c.stable_call_once((20,)));
-    }
-    #[test]
-    fn test_closure_ref_mut_copy_clone() {
-        let mut c:ClosureRefMut<i32,(i32,),i32>
-                 = closure!(ref mut a=10 => move |b| {*a+=b;*a});
-        let mut copied = c;
-        let mut cloned = c.clone();
-        assert_eq!(c.stable_call_mut((20,)), 30);
-        assert_eq!(c.stable_call_once((20,)), 50);
-        assert_eq!(copied.stable_call_mut((20,)), 30);
-        assert_eq!(copied.stable_call_once((20,)), 50);
-        assert_eq!(cloned.stable_call_mut((20,)), 30);
-        assert_eq!(cloned.stable_call_once((20,)), 50);
-    }
-    #[test]
-    fn test_closure_mut() {
-        let mut v = 10;
-        let mut c:ClosureMut<i32,(i32,),i32>
-             = closure!(mut a=&mut v => |b| {*a+=b;*a});
-        assert_eq!(c.stable_call_mut((20,)), 30);
-        assert_eq!(c.stable_call_once((20,)), 50);
-    }
-    #[test]
-    fn test_closure_once_copy_clone() {
-        let c:ClosureOnce<i32,(i32,),i32>
-             = closure!(a=10 => move |b| {a + b});
-        let copied = c;
-        let cloned = c.clone();
-        assert_eq!(c.stable_call_once((20,)), 30);
-        assert_eq!(c.stable_call_once((20,)), 30);
-        assert_eq!(copied.stable_call_once((20,)), 30);
-        assert_eq!(copied.stable_call_once((20,)), 30);
-        assert_eq!(cloned.stable_call_once((20,)), 30);
-        assert_eq!(cloned.stable_call_once((20,)), 30);
-    }    
+#[macro_export]
+macro_rules! closure_rec {
+    ($me:ident.state=$state_val:expr => || $body:expr) => {
+        ClosureOnceRec::new(|$me,()| $body, $state_val)
+    };
+    ($me:ident.state=$state_val:expr => |$arg:pat| $body:expr) => {
+        ClosureOnceRec::new(|$me,($arg,)| $body, $state_val)
+    };
+    ($me:ident.state=$state_val:expr => |$arg1:pat,$($arg2:pat),+| $body:expr) => {
+        ClosureOnceRec::new(|$me,($arg1,$($arg2),*)| $body, $state_val)
+    };
+    (mut $me:ident.state=$state_val:expr => || $body:expr) => {
+        ClosureOnceRec::new(|mut $me,()| $body, $state_val)
+    };
+    (mut $me:ident.state=$state_val:expr => |$arg:pat| $body:expr) => {
+        ClosureOnceRec::new(|mut $me,($arg,)| $body, $state_val)
+    };
+    (mut $me:ident.state=$state_val:expr => |$arg1:pat,$($arg2:pat),+| $body:expr) => {
+        ClosureOnceRec::new(|mut $me,($arg1,$($arg2),*)| $body, $state_val)
+    };
+    (mut $me:ident.state=$state_val:expr => mut || $body:expr) => {
+        ClosureMutRec::new(|$me,()| $body, $state_val)
+    };
+    (mut $me:ident.state=$state_val:expr => mut |$arg:pat| $body:expr) => {
+        ClosureMutRec::new(|$me,($arg,)| $body, $state_val)
+    };
+    (mut $me:ident.state=$state_val:expr => mut |$arg1:pat,$($arg2:pat),+| $body:expr) => {
+        ClosureMutRec::new(|$me,($arg1,$($arg2),*)| $body, $state_val)
+    };
+    ($me:ident.state=$state_val:expr => mut || $body:expr) => {
+        ClosureRecMut::new(|$me,()| $body, $state_val)
+    };
+    ($me:ident.state=$state_val:expr => mut |$arg:pat| $body:expr) => {
+        ClosureRecMut::new(|$me,($arg,)| $body, $state_val)
+    };
+    ($me:ident.state=$state_val:expr => mut |$arg1:pat,$($arg2:pat),+| $body:expr) => {
+        ClosureRecMut::new(|$me,($arg1,$($arg2),*)| $body, $state_val)
+    };
+    ($me:ident.state=$state_val:expr => ref || $body:expr) => {
+        ClosureRec::new(|$me,()| $body, $state_val)
+    };
+    ($me:ident.state=$state_val:expr => ref |$arg:pat| $body:expr) => {
+        ClosureRec::new(|$me,($arg,)| $body, $state_val)
+    };
+    ($me:ident.state=$state_val:expr => ref |$arg1:pat,$($arg2:pat),+| $body:expr) => {
+        ClosureRec::new(|$me,($arg1,$($arg2),*)| $body, $state_val)
+    };
 }
+
+pub mod closures;
+pub mod closure_rec;
+pub mod stable_fn;
+
+pub use closures::{Closure,ClosureMut,ClosureOnce,ClosureRef,ClosureRefMut};
+pub use stable_fn::{StableFn,StableFnMut,StableFnOnce};

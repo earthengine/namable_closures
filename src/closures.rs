@@ -70,6 +70,14 @@ impl<'a, State, Input, Output> Clone for Closure<'a, State, Input, Output>
         *self
     }
 }
+impl<'a, State, Input, Output> Closure<'a, State, Input, Output> {
+    pub fn new(f: fn(&State, Input) -> Output, t: &'a State) -> Self {
+        Self { f, t }
+    }
+    pub fn call_with_state(&self, s:&State, i: Input) -> Output {        
+        (self.f)(s, i)
+    }
+}
 #[doc="
 A Closure does not own its state, and only refers to the state when called.
  
@@ -133,6 +141,14 @@ where
         Self { f:self.f, t:self.t.clone()}
     }
 }
+impl<State, Input, Output> ClosureRef<State, Input, Output> {
+    pub fn new(f: fn(&State, Input) -> Output, t: State) -> Self {
+        Self { f, t }
+    }
+    pub fn call_with_state(&self, s:&State, i: Input) -> Output {        
+        (self.f)(s, i)
+    }
+}
 
 #[doc="
 A namable closure that does not own its state and can mutate it when called.
@@ -182,6 +198,14 @@ where
     f: fn(&mut State, Input) -> Output,
     t: &'a mut State,
 }
+impl<'a, State, Input, Output> ClosureMut<'a, State, Input, Output> {
+    pub fn new(f: fn(&mut State, Input) -> Output, t: &'a mut State) -> Self {
+        Self { f, t }
+    }
+    pub fn call_with_state(&self, s:&mut State, i: Input) -> Output {        
+        (self.f)(s, i)
+    }
+}
 
 #[doc="
 A namable closure that owns its state and can mutate it when called.
@@ -230,6 +254,14 @@ where
 {
     fn clone(&self) -> Self {
         Self{ f: self.f, t: self.t.clone() }
+    }
+}
+impl<State, Input, Output> ClosureRefMut<State, Input, Output> {
+    pub fn new(f: fn(&mut State, Input) -> Output, t: State) -> Self {
+        Self { f, t }
+    }
+    pub fn call_with_state(&mut self, t: &mut State, i:Input) -> Output {
+        (self.f)(t, i)
     }
 }
 
@@ -319,30 +351,12 @@ where
         Self::new(self.f, self.t.clone())
     }
 }
-
-impl<'a, State, Input, Output> Closure<'a, State, Input, Output> {
-    pub fn new(f: fn(&State, Input) -> Output, t: &'a State) -> Self {
-        Self { f, t }
-    }
-}
-impl<State, Input, Output> ClosureRef<State, Input, Output> {
-    pub fn new(f: fn(&State, Input) -> Output, t: State) -> Self {
-        Self { f, t }
-    }
-}
-impl<'a, State, Input, Output> ClosureMut<'a, State, Input, Output> {
-    pub fn new(f: fn(&mut State, Input) -> Output, t: &'a mut State) -> Self {
-        Self { f, t }
-    }
-}
-impl<State, Input, Output> ClosureRefMut<State, Input, Output> {
-    pub fn new(f: fn(&mut State, Input) -> Output, t: State) -> Self {
-        Self { f, t }
-    }
-}
 impl<State, Input, Output> ClosureOnce<State, Input, Output> {
     pub fn new(f: fn(State, Input) -> Output, t: State) -> ClosureOnce<State, Input, Output> {
         Self { f, t }
+    }
+    pub fn call_with_state(&mut self, t: State, i:Input) -> Output {
+        (self.f)(t, i)
     }
 }
 
@@ -573,5 +587,102 @@ where
     extern "rust-call" fn call(&self, i: Input) -> Output {
         let Self { f, t } = *self;
         f(t, i)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use {Closure, ClosureMut, ClosureOnce, ClosureRef, ClosureRefMut};
+    use {StableFn,StableFnMut,StableFnOnce};
+
+    #[cfg(feature="nightly")]
+    #[test]
+    fn test_closure_copy_clone_nightly() {
+        let c:ClosureRef<i32,(i32,),i32>
+             = closure!(ref a=10 => move |b| *a + b);
+        let copied = c;
+        let cloned = c.clone();
+        assert_eq!(c(20), 30);
+        assert_eq!(copied(20), c(20));
+        assert_eq!(cloned(20), c(20));
+
+        let mut state = 0;
+        {
+            let mut match_cnt:ClosureMut<i32,(i32,i32),()>
+                = closure!(mut state=&mut state => |a,b| if a==b { *state+=1 });
+            for i in 0..10 { match_cnt(i,i*3%10); }
+        }
+        assert_eq!(state,2);
+
+        let mut accumulate:ClosureRefMut<i32,(i32,),i32>
+            = closure!(ref mut state=0 => move |c| {*state+=c;*state});
+        assert_eq!(accumulate(1),1);
+        assert_eq!(accumulate(2),3);
+    }
+
+    #[test]
+    fn test_closure_ref_copy_clone() {
+        let mut c:ClosureRef<i32,(i32,),i32>
+             = closure!(ref a=10 => move |b| *a + b);
+        let mut copied = c;
+        let cloned = c.clone();
+        assert_eq!(c.stable_call((20,)), 30);
+        assert_eq!(copied.stable_call_mut((20,)), c.stable_call_mut((20,)));
+        assert_eq!(cloned.stable_call_once((20,)), c.stable_call_once((20,)));
+    }
+    #[test]
+    fn test_closure_copy_clone() {
+        let mut v = 10;
+        {
+            let mut c:Closure<i32,(i32,),i32>
+                 = closure!(a=&v => |b| *a + b);
+            let mut copied = c;
+            let cloned = c.clone();
+            assert_eq!(c.stable_call((20,)), 30);
+            assert_eq!(copied.stable_call_mut((20,)), c.stable_call_mut((20,)));
+            assert_eq!(cloned.stable_call_once((20,)), c.stable_call_once((20,)));
+        }
+        v = 20;
+        let mut c:Closure<i32,(i32,),i32>
+             = closure!(a=&v => |b| *a + b);
+        let mut copied = c;
+        let cloned = c.clone();
+        assert_eq!(c.stable_call((20,)), 40);
+        assert_eq!(copied.stable_call_mut((20,)), c.stable_call_mut((20,)));
+        assert_eq!(cloned.stable_call_once((20,)), c.stable_call_once((20,)));
+    }
+    #[test]
+    fn test_closure_ref_mut_copy_clone() {
+        let mut c:ClosureRefMut<i32,(i32,),i32>
+                 = closure!(ref mut a=10 => move |b| {*a+=b;*a});
+        let mut copied = c;
+        let mut cloned = c.clone();
+        assert_eq!(c.stable_call_mut((20,)), 30);
+        assert_eq!(c.stable_call_once((20,)), 50);
+        assert_eq!(copied.stable_call_mut((20,)), 30);
+        assert_eq!(copied.stable_call_once((20,)), 50);
+        assert_eq!(cloned.stable_call_mut((20,)), 30);
+        assert_eq!(cloned.stable_call_once((20,)), 50);
+    }
+    #[test]
+    fn test_closure_mut() {
+        let mut v = 10;
+        let mut c:ClosureMut<i32,(i32,),i32>
+             = closure!(mut a=&mut v => |b| {*a+=b;*a});
+        assert_eq!(c.stable_call_mut((20,)), 30);
+        assert_eq!(c.stable_call_once((20,)), 50);
+    }
+    #[test]
+    fn test_closure_once_copy_clone() {
+        let c:ClosureOnce<i32,(i32,),i32>
+             = closure!(a=10 => move |b| {a + b});
+        let copied = c;
+        let cloned = c.clone();
+        assert_eq!(c.stable_call_once((20,)), 30);
+        assert_eq!(c.stable_call_once((20,)), 30);
+        assert_eq!(copied.stable_call_once((20,)), 30);
+        assert_eq!(copied.stable_call_once((20,)), 30);
+        assert_eq!(cloned.stable_call_once((20,)), 30);
+        assert_eq!(cloned.stable_call_once((20,)), 30);
     }
 }
