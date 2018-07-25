@@ -2,6 +2,11 @@
 
 This crate provides some types and macros that can create closures which type is namable.
 
+# Update
+2018-07-25 v0.2.2 Add Recursion support (experimential)
+
+# Usage
+
 To use, as usual,
 
 ```rust
