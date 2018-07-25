@@ -1,12 +1,6 @@
-#![doc="
-|a     |b|
-|------|-|
-|`|v|e`|e|
-"]
-
 use stable_fn::{StableFn,StableFnMut,StableFnOnce};
 
-struct ClosureRec<State,Input,Output> {
+pub struct ClosureRec<State,Input,Output> {
     func: fn(&ClosureRec<State,Input,Output>, Input) -> Output,
     state: State
 }
@@ -31,7 +25,7 @@ impl<State,Input,Output> ClosureRec<State,Input,Output> {
     }
 }
 
-struct ClosureMutRec<State,Input,Output> {
+pub struct ClosureMutRec<State,Input,Output> {
     func: fn(&mut ClosureMutRec<State,Input,Output>, Input) -> Output,
     state: State
 }
@@ -56,7 +50,7 @@ impl<State,Input,Output> ClosureMutRec<State,Input,Output> {
     }
 }
 
-struct ClosureRecMut<'a, State,Input,Output>
+pub struct ClosureRecMut<'a, State,Input,Output>
 where
     State: 'a
 {
@@ -69,7 +63,7 @@ impl<'a, State,Input,Output> ClosureRecMut<'a, State,Input,Output> {
     }
 }
 
-struct ClosureOnceRec<State,Input,Output> {
+pub struct ClosureOnceRec<State,Input,Output> {
     func: fn(ClosureOnceRec<State,Input,Output>, Input) -> Output,
     state: State
 }
@@ -164,6 +158,90 @@ where
     State: Copy
 {
     fn stable_call(&self, i:Input) -> Output {
+        (self.func)(*self, i)
+    }
+}
+
+#[cfg(feature="nightly")]
+impl<State,Input,Output> FnOnce<Input> for ClosureRec<State,Input,Output> {
+    type Output=Output;
+    extern "rust-call" fn call_once(self, i:Input) -> Self::Output {
+        (self.func)(&self, i)
+    }
+}
+#[cfg(feature="nightly")]
+impl<State,Input,Output> FnMut<Input> for ClosureRec<State,Input,Output> {
+    extern "rust-call" fn call_mut(&mut self, i:Input) -> Output {
+        (self.func)(self, i)
+    }
+}
+#[cfg(feature="nightly")]
+impl<State,Input,Output> Fn<Input> for ClosureRec<State,Input,Output> {
+    extern "rust-call" fn call(&self, i:Input) -> Output {
+        (self.func)(self, i)
+    }
+}
+
+#[cfg(feature="nightly")]
+impl<State,Input,Output> FnOnce<Input> for ClosureMutRec<State,Input,Output> {
+    type Output=Output;
+    extern "rust-call" fn call_once(mut self, i:Input) -> Self::Output {
+        (self.func)(&mut self, i)
+    }
+}
+#[cfg(feature="nightly")]
+impl<State,Input,Output> FnMut<Input> for ClosureMutRec<State,Input,Output> {
+    extern "rust-call" fn call_mut(&mut self, i:Input) -> Output {
+        (self.func)(self, i)
+    }
+}
+#[cfg(feature="nightly")]
+impl<State,Input,Output> Fn<Input> for ClosureMutRec<State,Input,Output>
+where
+    State: Copy
+{
+    extern "rust-call" fn call(&self, i:Input) -> Output {
+        let mut s = *self;
+        (s.func)(&mut s, i)
+    }
+}
+
+#[cfg(feature="nightly")]
+impl<'a,State,Input,Output> FnOnce<Input> for ClosureRecMut<'a,State,Input,Output> {
+    type Output=Output;
+    extern "rust-call" fn call_once(mut self, i:Input) -> Self::Output {
+        (self.func)(&mut self, i)
+    }
+}
+#[cfg(feature="nightly")]
+impl<'a,State,Input,Output> FnMut<Input> for ClosureRecMut<'a,State,Input,Output> {
+    extern "rust-call" fn call_mut(&mut self, i:Input) -> Output {
+        (self.func)(self, i)
+    }
+}
+
+#[cfg(feature="nightly")]
+impl<State,Input,Output> FnOnce<Input> for ClosureOnceRec<State,Input,Output> {
+    type Output=Output;
+    extern "rust-call" fn call_once(self, i:Input) -> Self::Output {
+        (self.func)(self, i)
+    }
+}
+#[cfg(feature="nightly")]
+impl<State,Input,Output> FnMut<Input> for ClosureOnceRec<State,Input,Output>
+where
+    State: Copy
+{
+    extern "rust-call" fn call_mut(&mut self, i:Input) -> Output {
+        (self.func)(*self, i)
+    }
+}
+#[cfg(feature="nightly")]
+impl<State,Input,Output> Fn<Input> for ClosureOnceRec<State,Input,Output>
+where
+    State: Copy
+{
+    extern "rust-call" fn call(&self, i:Input) -> Output {
         (self.func)(*self, i)
     }
 }

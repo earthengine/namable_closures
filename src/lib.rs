@@ -540,3 +540,4 @@ pub mod stable_fn;
 
 pub use closures::{Closure,ClosureMut,ClosureOnce,ClosureRef,ClosureRefMut};
 pub use stable_fn::{StableFn,StableFnMut,StableFnOnce};
+pub use closure_rec::{ClosureOnceRec,ClosureRecMut,ClosureMutRec,ClosureRec};
