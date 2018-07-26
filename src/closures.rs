@@ -626,9 +626,9 @@ mod tests {
              = closure!(ref a=10 => move |b| *a + b);
         let mut copied = c;
         let cloned = c.clone();
-        assert_eq!(c.stable_call((20,)), 30);
-        assert_eq!(copied.stable_call_mut((20,)), c.stable_call_mut((20,)));
-        assert_eq!(cloned.stable_call_once((20,)), c.stable_call_once((20,)));
+        assert_eq!(call!(ref c (20)), 30);
+        assert_eq!(call!(mut copied(20)), call!(mut c(20)));
+        assert_eq!(call!(cloned(20)), call!(c(20)));
     }
     #[test]
     fn test_closure_copy_clone() {
@@ -638,9 +638,9 @@ mod tests {
                  = closure!(a=&v => |b| *a + b);
             let mut copied = c;
             let cloned = c.clone();
-            assert_eq!(c.stable_call((20,)), 30);
-            assert_eq!(copied.stable_call_mut((20,)), c.stable_call_mut((20,)));
-            assert_eq!(cloned.stable_call_once((20,)), c.stable_call_once((20,)));
+            assert_eq!(call!(ref c(20)), 30);
+            assert_eq!(call!(mut copied(20)), regulate!(|i|mut c)(20));
+            assert_eq!(call!(cloned(20)), regulate!(|i|c)(20));
         }
         v = 20;
         let mut c:Closure<i32,(i32,),i32>

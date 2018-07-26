@@ -534,6 +534,68 @@ macro_rules! closure_rec {
     };
 }
 
+#[macro_export]
+macro_rules! call {
+    (ref $c:ident ()) => {
+        $c.ident.stable_call(())
+    };
+    (ref $c:ident ($arg:expr)) => {
+        $c.stable_call(($arg,))
+    };
+    (ref $c:ident ($arg1:expr,$($arg2:expr),+)) => {
+        $c.stable_call(($arg1,$($arg2),*))
+    };
+    (mut $c:ident ()) => {
+        $c.stable_call_mut(())
+    };
+    (mut $c:ident ($arg:expr)) => {
+        $c.stable_call_mut(($arg,))
+    };
+    (mut $c:ident ($arg1:expr,$($arg2:expr),+)) => {
+        $c.stable_call_mut(($arg1,$($arg2),*))
+    };
+    ($c:ident ()) => {
+        $c.stable_call_once(())
+    };
+    ($c:ident ($arg:expr)) => {
+        $c.stable_call_once(($arg,))
+    };
+    ($c:ident ($arg1:expr,$($arg2:expr),+)) => {
+        $c.stable_call_once(($arg1,$($arg2),*))
+    };
+}
+
+#[macro_export]
+macro_rules! regulate {
+    (|| ref $c:ident) => {
+        || $c.stable_call(())
+    };
+    (|$arg:ident| ref $c:ident) => {
+        |$arg| $c.stable_call(($arg,))
+    };
+    (|$arg1:ident,$($arg2:ident),+| ref $c:ident) => {
+        |$arg1,$($arg2),*| $c.stable_call(($arg1,$($arg2),*))
+    };
+    (|| mut $c:ident) => {
+        || $c.stable_call_mut(())
+    };
+    (|$arg:ident| mut $c:ident) => {
+        |$arg| $c.stable_call_mut(($arg,))
+    };
+    (|$arg1:ident,$($arg2:ident),+| mut $c:ident) => {
+        |$arg1,$($arg2),*| $c:stable_call_mut(($arg1,$($arg2),*))
+    };
+    (|| $c:ident) => {
+        || $c.stable_call_once(())
+    };
+    (|$arg:ident| $c:ident) => {
+        |$arg| $c.stable_call_once(($arg,))
+    };
+    (|$arg1:ident,$($arg2:ident),+| $c:ident) => {
+        |$arg1,$($arg2),*| $c.stable_call_once(($arg1,$($arg2),*))
+    };
+}
+
 pub mod closures;
 pub mod closure_rec;
 pub mod stable_fn;
